@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Code Aggregator (AI Optimized)</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --container-bg: #282a36;
+            --text-color: #f8f8f2;
+            --primary: #bd93f9;
+            --primary-hover: #ff79c6;
+            --border: #44475a;
+            --warning: #ffb86c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--container-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 { margin-top: 0; color: var(--primary); }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button, .file-upload-btn {
+            background-color: var(--primary);
+            color: #282a36;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover, .file-upload-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        input[type="file"] { display: none; }
+
+        .status { margin-left: 10px; font-size: 14px; color: #8be9fd; }
+
+        textarea {
+            width: 100%;
+            height: 400px;
+            background-color: #1e1e2e;
+            color: #f8f8f2;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            resize: vertical;
+            box-sizing: border-box;
+            white-space: pre;
+        }
+
+        .settings {
+            margin-bottom: 20px;
+            font-size: 14px;
+            background: #1e1e2e;
+            padding: 15px;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+        
+        .settings span { color: var(--warning); font-weight: bold; }
+        
+        .skipped-log {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6272a4;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📁 Smart Code Aggregator (AI Optimized)</h1>
+        
+        <div class="settings">
+            <strong>Supported files:</strong> .html, .css, .js, .ts, .jsx, .tsx, .vue, .java, .py, .c, .cpp, .cs, .go, .rs, .xml, .json, .md, .sql <br>
+            <strong>Ignored folders:</strong> node_modules, .git, build, dist, target, venv, .next, vendor, bin, obj <br>
+            <strong>Smart Filters:</strong> Skips lockfiles (package-lock.json), minified files (.min.js), and <span>any file over 500 KB</span>.
+        </div>
+
+        <div class="controls">
+            <label class="file-upload-btn">
+                Select Folder
+                <input type="file" id="folderInput" webkitdirectory directory multiple />
+            </label>
+            <button id="copyBtn">📋 Copy All Code</button>
+            <button id="downloadBtn">💾 Download .txt</button>
+            <span class="status" id="statusText">Waiting for folder...</span>
+        </div>
+
+        <textarea id="outputText" placeholder="Your aggregated source code will appear here..." readonly></textarea>
+        <div class="skipped-log" id="skippedLog"></div>
+    </div>
+
+    <script>
+        // 1. Core Source Code Extensions
+        const allowedExtensions = [
+            '.html', '.css', '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte', 
+            '.java', '.py', '.c', '.cpp', '.h', '.cs', '.go', '.rs', '.rb', '.php', 
+            '.xml', '.json', '.yaml', '.yml', '.md', '.sql', '.sh', '.env'
+        ];
+
+        // 2. Expanded Ignore Folders (Catches more build/dependency outputs)
+        const ignoredFolders = [
+            '/node_modules/', '/.git/', '/.idea/', '/.vscode/', '/__pycache__/', 
+            '/build/', '/dist/', '/target/', '/venv/', '/env/', '/.next/', '/.nuxt/', 
+            '/vendor/', '/coverage/', '/bin/', '/obj/', '/out/'
+        ];
+
+        // 3. Exact files to completely ignore (Usually massive junk files)
+        const ignoredFiles = [
+            'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'composer.lock', 'Gemfile.lock'
+        ];
+
+        // 4. Max File Size: 500 KB (500 * 1024 bytes). Prevents massive data dumps.
+        const MAX_FILE_SIZE = 512000; 
+
+        const folderInput = document.getElementById('folderInput');
+        const outputText = document.getElementById('outputText');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const statusText = document.getElementById('statusText');
+        const skippedLog = document.getElementById('skippedLog');
+
+        let currentFolderName = "aggregated_code";
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        function downloadAsTxt(text, filename) {
+            if (!text) return;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        folderInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            if (files[0].webkitRelativePath) {
+                currentFolderName = files[0].webkitRelativePath.split('/')[0];
+            }
+
+            statusText.textContent = 'Processing files...';
+            outputText.value = '';
+            skippedLog.innerHTML = ''; // Clear skipped files log
+            
+            let aggregatedCode = '';
+            let fileCount = 0;
+            let skippedFiles = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const path = file.webkitRelativePath || file.name;
+                const fileName = file.name;
+                const ext = path.substring(path.lastIndexOf('.')).toLowerCase();
+
+                // Filters
+                const isIgnoredFolder = ignoredFolders.some(folder => path.includes(folder));
+                const isIgnoredFile = ignoredFiles.includes(fileName);
+                const isMinified = fileName.endsWith('.min.js') || fileName.endsWith('.min.css');
+                const isTooBig = file.size > MAX_FILE_SIZE;
+                const isAllowedExt = allowedExtensions.includes(ext);
+
+                if (!isIgnoredFolder && isAllowedExt) {
+                    if (isIgnoredFile || isMinified || isTooBig) {
+                        let reason = isTooBig ? `Over 500KB (${Math.round(file.size/1024)}KB)` : (isMinified ? 'Minified' : 'Lockfile');
+                        skippedFiles.push(`Skipped: ${path} [${reason}]`);
+                        continue;
+                    }
+
+                    try {
+                        const content = await readFile(file);
+                        
+                        aggregatedCode += `================================================================================\n`;
+                        aggregatedCode += `File: ${path}\n`;
+                        aggregatedCode += `================================================================================\n\n`;
+                        aggregatedCode += `${content}\n\n\n`;
+                        
+                        fileCount++;
+                    } catch (err) {
+                        console.error(`Error reading ${path}:`, err);
+                    }
+                }
+            }
+
+            outputText.value = aggregatedCode;
+            
+            // Calculate size of final string in MB
+            const finalSizeMB = (new Blob([aggregatedCode]).size / (1024 * 1024)).toFixed(2);
+            
+            statusText.textContent = `Aggregated ${fileCount} files (~${finalSizeMB} MB).`;
+
+            if (skippedFiles.length > 0) {
+                skippedLog.innerHTML = `<strong>Skipped ${skippedFiles.length} files:</strong><br>` + skippedFiles.join('<br>');
+            }
+
+            if (fileCount > 0) {
+                downloadAsTxt(aggregatedCode, `${currentFolderName}_code.txt`);
+            } else {
+                statusText.textContent = `No supported files found in the selected folder.`;
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if (!outputText.value) {
+                alert("Nothing to copy! Please select a folder first.");
+                return;
+            }
+
+            navigator.clipboard.writeText(outputText.value).then(() => {
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = "✅ Copied!";
+                setTimeout(() => { copyBtn.innerText = originalText; }, 2000);
+            }).catch(err => {
+                alert("Failed to copy text. You can manually click inside the text box and press Ctrl+A / Ctrl+C.");
+            });
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (!outputText.value) {
+                alert("Nothing to download! Please select a folder first.");
+                return;
+            }
+            downloadAsTxt(outputText.value, `${currentFolderName}_code.txt`);
+        });
+    </script>
+
+</body>
+</html>
