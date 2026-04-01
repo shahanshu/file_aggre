@@ -38,7 +38,6 @@
 
         .wrap { width: 100%; max-width: 880px; }
 
-        /* ── Header ── */
         header {
             display: flex;
             align-items: baseline;
@@ -63,7 +62,6 @@
             letter-spacing: 1px;
         }
 
-        /* ── Upload Row ── */
         .upload-row {
             display: flex;
             gap: 8px;
@@ -87,11 +85,8 @@
             color: var(--text);
         }
 
-        .upload-btn:hover {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-        }
+        .upload-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .upload-btn.disabled { opacity: 0.45; pointer-events: none; }
 
         input[type="file"] { display: none; }
 
@@ -127,6 +122,8 @@
             font-family: var(--mono);
             font-size: 12px;
             color: var(--text2);
+            min-width: 0;
+            overflow: hidden;
         }
 
         .loader-text em {
@@ -135,7 +132,26 @@
             font-weight: 600;
         }
 
-        /* ── Filter Chips ── */
+        /* Progress bar under loader */
+        .progress-bar-wrap {
+            display: none;
+            height: 2px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar-wrap.visible { display: block; }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
         .filter-section { margin-bottom: 20px; }
 
         .section-label {
@@ -171,7 +187,6 @@
         .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
         .chip .count { font-size: 10px; opacity: 0.6; }
 
-        /* ── Stats Bar ── */
         .stats-bar {
             display: flex;
             align-items: center;
@@ -196,7 +211,6 @@
         .stat.grow { flex: 1; text-align: right; border-right: none; }
         .stat.skipped strong { color: var(--warn); }
 
-        /* ── Output ── */
         .output-header {
             display: flex;
             align-items: center;
@@ -252,7 +266,6 @@
             line-height: 1.8;
         }
 
-        /* ── Modal ── */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -370,7 +383,6 @@
         .modal-btn.cancel { background: var(--surface); color: var(--text2); border: 1.5px solid var(--border2); }
         .modal-btn.cancel:hover { color: var(--text); }
 
-        /* ── Scrollbar ── */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -382,19 +394,18 @@
 <div class="wrap">
     <header>
         <h1>code wRapper</h1>
-        <span class="version">By Anshu Shah
-        </span>
+        <span class="version">By Anshu Shah</span>
     </header>
 
     <div class="upload-row">
-        <label class="upload-btn">
+        <label class="upload-btn" id="folderLabel">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M1 11v2a1 1 0 001 1h12a1 1 0 001-1v-2M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             Select Folder
             <input type="file" id="folderInput" webkitdirectory directory multiple />
         </label>
-        <label class="upload-btn">
+        <label class="upload-btn" id="fileLabel">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M9 2v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -411,7 +422,12 @@
             <div class="dot"></div>
             <div class="dot"></div>
         </div>
-        <div class="loader-text">Reading <em id="loaderFile">files…</em></div>
+        <div class="loader-text" id="loaderText">Reading <em id="loaderFile">files…</em></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar-wrap" id="progressBarWrap">
+        <div class="progress-bar" id="progressBar"></div>
     </div>
 
     <!-- Filter chips -->
@@ -492,36 +508,49 @@
     ];
 
     const MAX_FILE_SIZE = 512000;
+    // How many files to read before yielding to the browser (keeps dots animating)
+    const YIELD_EVERY = 8;
 
     let allFiles = [], filteredFiles = [], activeExt = 'all';
     let currentFolderName = 'wrapped_code_file', modalPendingFiles = [];
+    let isLoading = false;
 
     const $ = id => document.getElementById(id);
-    const folderInput   = $('folderInput');
-    const fileInput     = $('fileInput');
-    const outputText    = $('outputText');
-    const copyBtn       = $('copyBtn');
-    const downloadBtn   = $('downloadBtn');
-    const statusText    = $('statusText');
-    const skippedLog    = $('skippedLog');
-    const chipContainer = $('chipContainer');
-    const filterSection = $('filterSection');
-    const statsBar      = $('statsBar');
-    const loaderWrap    = $('loaderWrap');
-    const loaderFile    = $('loaderFile');
-    const statFileCount = $('statFileCount');
-    const statSizeVal   = $('statSizeVal');
-    const statSkipped   = $('statSkipped');
-    const statSkipCount = $('statSkipCount');
-    const modalOverlay  = $('modalOverlay');
-    const modalExt      = $('modalExt');
-    const modalDesc     = $('modalDesc');
-    const modalFileList = $('modalFileList');
-    const modalClose    = $('modalClose');
-    const modalCancel   = $('modalCancel');
-    const modalLoad     = $('modalLoad');
+    const folderInput    = $('folderInput');
+    const fileInput      = $('fileInput');
+    const folderLabel    = $('folderLabel');
+    const fileLabel      = $('fileLabel');
+    const outputText     = $('outputText');
+    const copyBtn        = $('copyBtn');
+    const downloadBtn    = $('downloadBtn');
+    const statusText     = $('statusText');
+    const skippedLog     = $('skippedLog');
+    const chipContainer  = $('chipContainer');
+    const filterSection  = $('filterSection');
+    const statsBar       = $('statsBar');
+    const loaderWrap     = $('loaderWrap');
+    const loaderText     = $('loaderText');
+    const loaderFile     = $('loaderFile');
+    const progressBarWrap= $('progressBarWrap');
+    const progressBar    = $('progressBar');
+    const statFileCount  = $('statFileCount');
+    const statSizeVal    = $('statSizeVal');
+    const statSkipped    = $('statSkipped');
+    const statSkipCount  = $('statSkipCount');
+    const modalOverlay   = $('modalOverlay');
+    const modalExt       = $('modalExt');
+    const modalDesc      = $('modalDesc');
+    const modalFileList  = $('modalFileList');
+    const modalClose     = $('modalClose');
+    const modalCancel    = $('modalCancel');
+    const modalLoad      = $('modalLoad');
 
     /* ── utils ── */
+
+    // Yields to the browser so the animation frame can paint
+    const yieldToBrowser = () => new Promise(r => setTimeout(r, 0));
+
+    // Reads a single file as text — wrapped in a Promise so it's awaitable
     const readFile = file => new Promise((res, rej) => {
         const r = new FileReader();
         r.onload = e => res(e.target.result);
@@ -546,36 +575,63 @@
         }).join('\n');
     }
 
-    const showLoader = v => loaderWrap.classList.toggle('visible', v);
+    function setLoading(v, label = '') {
+        isLoading = v;
+        loaderWrap.classList.toggle('visible', v);
+        progressBarWrap.classList.toggle('visible', v);
+        if (label) loaderFile.textContent = label;
+        // Disable buttons while loading so user can't re-trigger
+        folderLabel.classList.toggle('disabled', v);
+        fileLabel.classList.toggle('disabled', v);
+    }
+
+    function setProgress(done, total) {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        progressBar.style.width = pct + '%';
+    }
 
     /* ── ingest ── */
     async function ingestFiles(files, isFolder) {
-        if (!files.length) return;
+        if (!files.length || isLoading) return;
+
         currentFolderName = isFolder && files[0].webkitRelativePath
             ? files[0].webkitRelativePath.split('/')[0]
             : 'wrapped_code_file';
 
-        showLoader(true);
+        // Show loader BEFORE any heavy work, then yield so browser paints dots
         filterSection.style.display = 'none';
         statsBar.style.display = 'none';
         outputText.value = '';
         skippedLog.innerHTML = '';
-        loaderFile.textContent = 'scanning…';
-        await new Promise(r => setTimeout(r, 30));
+        setLoading(true, 'scanning…');
+        setProgress(0, 1);
+        await yieldToBrowser(); // let the dots animation frame land
 
         allFiles = [];
         const skipped = [];
+        const total = files.length;
 
-        for (const file of files) {
+        // ── Pass 1: filter (CPU-only, yield every YIELD_EVERY items) ──
+        for (let i = 0; i < total; i++) {
+            const file = files[i];
             const path = file.webkitRelativePath || file.name;
             const ext = getExt(path);
-            if (isFolder && ignoredFolders.some(f => path.includes(f))) continue;
-            if (!allowedExtensions.includes(ext)) continue;
-            if (ignoredFiles.includes(file.name)) { skipped.push(`${path} [lockfile]`); continue; }
-            if (file.name.endsWith('.min.js') || file.name.endsWith('.min.css')) { skipped.push(`${path} [minified]`); continue; }
-            if (file.size > MAX_FILE_SIZE) { skipped.push(`${path} [>${formatSize(file.size)}]`); continue; }
-            allFiles.push(file);
+
+            if (isFolder && ignoredFolders.some(f => path.includes(f))) { /* skip silently */ }
+            else if (!allowedExtensions.includes(ext)) { /* skip silently */ }
+            else if (ignoredFiles.includes(file.name)) { skipped.push(`${path} [lockfile]`); }
+            else if (file.name.endsWith('.min.js') || file.name.endsWith('.min.css')) { skipped.push(`${path} [minified]`); }
+            else if (file.size > MAX_FILE_SIZE) { skipped.push(`${path} [>${formatSize(file.size)}]`); }
+            else { allFiles.push(file); }
+
+            if (i % YIELD_EVERY === 0) {
+                loaderFile.textContent = `scanning ${i + 1} / ${total}`;
+                setProgress(i, total);
+                await yieldToBrowser();
+            }
         }
+
+        setProgress(1, 1); // scanning done
 
         if (skipped.length) {
             statSkipped.style.display = 'flex';
@@ -589,7 +645,8 @@
         activeExt = 'all';
         filteredFiles = [...allFiles];
         await renderOutput(filteredFiles);
-        showLoader(false);
+
+        setLoading(false);
         filterSection.style.display = 'block';
         statsBar.style.display = 'flex';
     }
@@ -618,6 +675,7 @@
     }
 
     function onChipClick(chip) {
+        if (isLoading) return;
         const ext = chip.dataset.ext;
         if (ext === 'all') {
             setActiveChip('all');
@@ -628,7 +686,7 @@
         }
     }
 
-    /* ── modal — no browser confirm ── */
+    /* ── modal ── */
     function openModal(ext) {
         const files = allFiles.filter(f => getExt(f.webkitRelativePath || f.name) === ext);
         modalPendingFiles = files;
@@ -658,7 +716,6 @@
     modalCancel.addEventListener('click', () => modalOverlay.classList.remove('open'));
     modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
 
-    // Load all — no re-confirm, just do it
     modalLoad.addEventListener('click', () => {
         const ext = modalExt.textContent;
         setActiveChip(ext);
@@ -667,7 +724,7 @@
         renderOutput(filteredFiles);
     });
 
-    /* ── render (line-by-line streaming) ── */
+    /* ── render ── */
     async function renderOutput(files) {
         outputText.value = '';
         if (!files.length) {
@@ -677,14 +734,20 @@
             return;
         }
 
-        showLoader(true);
-        statusText.textContent = 'reading…';
+        setLoading(true, 'reading…');
+        setProgress(0, files.length);
+        await yieldToBrowser();
+
         let total = '', totalBytes = 0;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const path = file.webkitRelativePath || file.name;
-            loaderFile.textContent = path;
+
+            // Update loader label and progress, then yield so dots keep animating
+            loaderFile.textContent = `${i + 1} / ${files.length} — ${path}`;
+            setProgress(i, files.length);
+            await yieldToBrowser();
 
             try {
                 const raw = await readFile(file);
@@ -692,11 +755,12 @@
                 let chunk = `// ── ${path}\n`;
                 for (let j = 0; j < lines.length; j++) {
                     chunk += lines[j] + '\n';
+                    // Stream to textarea every 300 lines so it feels live
                     if (j % 300 === 299) {
                         total += chunk; chunk = '';
                         outputText.value = total;
                         outputText.scrollTop = outputText.scrollHeight;
-                        await new Promise(r => setTimeout(r, 0));
+                        await yieldToBrowser();
                     }
                 }
                 total += chunk + '\n';
@@ -705,7 +769,8 @@
             } catch(e) { console.error(e); }
         }
 
-        showLoader(false);
+        setLoading(false);
+        setProgress(files.length, files.length);
         statFileCount.textContent = files.length;
         statSizeVal.textContent = formatSize(totalBytes);
         statusText.textContent = 'done';
@@ -732,7 +797,7 @@
         } catch { alert('Copy failed — use Ctrl+A / Ctrl+C manually.'); }
     });
 
-    /* ── download (manual only) ── */
+    /* ── download ── */
     downloadBtn.addEventListener('click', () => {
         if (!outputText.value.trim()) { alert('Nothing to download.'); return; }
         const blob = new Blob([outputText.value], { type: 'text/plain' });
