@@ -3,273 +3,817 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Code Aggregator (AI Optimized)</title>
+    <title>Smart Code Aggregator</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
         :root {
-            --bg-color: #1e1e2e;
-            --container-bg: #282a36;
-            --text-color: #f8f8f2;
-            --primary: #bd93f9;
-            --primary-hover: #ff79c6;
-            --border: #44475a;
-            --warning: #ffb86c;
+            --bg: #0d0d0f;
+            --surface: #141416;
+            --surface2: #1a1a1d;
+            --border: #2a2a2f;
+            --text: #e8e8ec;
+            --muted: #5a5a6a;
+            --accent: #7c6af7;
+            --accent2: #4fc9c9;
+            --warn: #f0a060;
+            --danger: #f06070;
+            --success: #50d890;
         }
 
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
+            font-family: 'Syne', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 24px 16px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        .container {
+        .wrap {
             width: 100%;
-            max-width: 900px;
-            background: var(--container-bg);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            max-width: 960px;
         }
 
-        h1 { margin-top: 0; color: var(--primary); }
+        header {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
 
-        .controls {
+        header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text);
+        }
+
+        header h1 span { color: var(--accent); }
+
+        .badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: var(--accent);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* --- Upload Zone --- */
+        .upload-row {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            display: inline-flex;
             align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+        }
+
+        .upload-btn.primary { background: var(--accent); color: #fff; }
+        .upload-btn.primary:hover { background: #9180f8; }
+        .upload-btn.secondary { background: var(--surface2); color: var(--accent2); border: 1px solid var(--border); }
+        .upload-btn.secondary:hover { border-color: var(--accent2); }
+        input[type="file"] { display: none; }
+
+        /* --- Filter Chips --- */
+        .filter-section {
+            margin-bottom: 18px;
+        }
+
+        .filter-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1.5px solid var(--border);
+            background: var(--surface2);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+        }
+
+        .chip:hover { border-color: var(--accent); color: var(--text); }
+        .chip.active { border-color: var(--accent); background: rgba(124,106,247,0.15); color: var(--accent); }
+        .chip.active .dot { background: var(--accent); }
+        .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background 0.15s; }
+
+        .chip-all { border-color: var(--accent2); color: var(--accent2); background: rgba(79,201,201,0.08); }
+        .chip-all:hover { background: rgba(79,201,201,0.15); }
+
+        /* --- Stats Bar --- */
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 10px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
             flex-wrap: wrap;
         }
 
-        button, .file-upload-btn {
-            background-color: var(--primary);
-            color: #282a36;
+        .stat { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+        .stat strong { color: var(--text); font-weight: 600; }
+        .stat.ok strong { color: var(--success); }
+        .stat.warn strong { color: var(--warn); }
+
+        .stat-sep { width: 1px; height: 16px; background: var(--border); }
+
+        /* --- Progress --- */
+        .progress-wrap {
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .progress-wrap.visible { display: block; }
+
+        .progress-bar-track {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 2px;
+            transition: width 0.1s;
+            width: 0%;
+        }
+
+        .progress-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .progress-label span { color: var(--accent2); }
+
+        /* --- Output --- */
+        .output-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .output-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 7px;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.15s;
         }
 
-        button:hover, .file-upload-btn:hover {
-            background-color: var(--primary-hover);
-        }
+        .action-btn.copy { background: var(--surface2); color: var(--accent2); border: 1px solid var(--border); }
+        .action-btn.copy:hover { border-color: var(--accent2); }
+        .action-btn.download { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); }
+        .action-btn.download:hover { border-color: var(--accent); }
 
-        input[type="file"] { display: none; }
-
-        .status { margin-left: 10px; font-size: 14px; color: #8be9fd; }
-
-        textarea {
+        #outputText {
             width: 100%;
-            height: 400px;
-            background-color: #1e1e2e;
-            color: #f8f8f2;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 15px;
+            height: 420px;
+            background: var(--surface);
+            color: #d0d0dc;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            line-height: 1.6;
+            padding: 16px;
             border: 1px solid var(--border);
-            border-radius: 5px;
+            border-radius: 8px;
             resize: vertical;
             box-sizing: border-box;
             white-space: pre;
+            overflow: auto;
         }
 
-        .settings {
+        #outputText:focus { outline: none; border-color: var(--accent); }
+
+        /* --- Skipped Log --- */
+        .skipped-log {
+            margin-top: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--warn);
+            max-height: 90px;
+            overflow-y: auto;
+            opacity: 0.8;
+        }
+
+        /* --- Dialog / Modal --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 520px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-title code {
+            font-family: 'JetBrains Mono', monospace;
             font-size: 14px;
-            background: #1e1e2e;
-            padding: 15px;
-            border-radius: 5px;
+            background: rgba(124,106,247,0.15);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .modal-close:hover { color: var(--text); }
+
+        .modal-desc {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 20px;
             line-height: 1.6;
         }
-        
-        .settings span { color: var(--warning); font-weight: bold; }
-        
-        .skipped-log {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #6272a4;
-            max-height: 100px;
+
+        .modal-file-list {
+            list-style: none;
+            max-height: 260px;
             overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
         }
+
+        .modal-file-list li {
+            padding: 9px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .modal-file-list li:last-child { border-bottom: none; }
+        .modal-file-list li:hover { background: var(--surface2); color: var(--text); }
+        .modal-file-list li .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .modal-file-list li .file-size { color: var(--border); font-size: 10px; flex-shrink: 0; }
+        .modal-file-list li .file-icon { flex-shrink: 0; }
+
+        .modal-footer {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 9px 18px;
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 7px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .modal-btn.confirm { background: var(--accent); color: #fff; }
+        .modal-btn.confirm:hover { background: #9180f8; }
+        .modal-btn.cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+        .modal-btn.cancel:hover { color: var(--text); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>📁 Smart Code Aggregator (AI Optimized)</h1>
-        
-        <div class="settings">
-            <strong>Supported files:</strong> .html, .css, .js, .ts, .jsx, .tsx, .vue, .java, .py, .c, .cpp, .cs, .go, .rs, .xml, .json, .md, .sql <br>
-            <strong>Ignored folders:</strong> node_modules, .git, build, dist, target, venv, .next, vendor, bin, obj <br>
-            <strong>Smart Filters:</strong> Skips lockfiles (package-lock.json), minified files (.min.js), and <span>any file over 500 KB</span>.
-        </div>
+<div class="wrap">
+    <header>
+        <h1>📁 Smart Code <span>Aggregator</span></h1>
+        <span class="badge">AI OPTIMIZED</span>
+    </header>
 
-        <div class="controls">
-            <label class="file-upload-btn">
-                Select Folder
-                <input type="file" id="folderInput" webkitdirectory directory multiple />
-            </label>
-            <button id="copyBtn">📋 Copy All Code</button>
-            <button id="downloadBtn">💾 Download .txt</button>
-            <span class="status" id="statusText">Waiting for folder...</span>
-        </div>
-
-        <textarea id="outputText" placeholder="Your aggregated source code will appear here..." readonly></textarea>
-        <div class="skipped-log" id="skippedLog"></div>
+    <div class="upload-row">
+        <label class="upload-btn primary">
+            📂 Select Folder
+            <input type="file" id="folderInput" webkitdirectory directory multiple />
+        </label>
+        <label class="upload-btn secondary">
+            📄 Select Files
+            <input type="file" id="fileInput" multiple />
+        </label>
     </div>
 
-    <script>
-        // 1. Core Source Code Extensions
-        const allowedExtensions = [
-            '.html', '.css', '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte', 
-            '.java', '.py', '.c', '.cpp', '.h', '.cs', '.go', '.rs', '.rb', '.php', 
-            '.xml', '.json', '.yaml', '.yml', '.md', '.sql', '.sh', '.env'
-        ];
+    <!-- Extension Filter Chips -->
+    <div class="filter-section">
+        <div class="filter-label">Filter by type</div>
+        <div class="chips" id="chipContainer">
+            <span class="chip chip-all active" data-ext="all">
+                <span class="dot"></span> All Files
+            </span>
+        </div>
+    </div>
 
-        // 2. Expanded Ignore Folders (Catches more build/dependency outputs)
-        const ignoredFolders = [
-            '/node_modules/', '/.git/', '/.idea/', '/.vscode/', '/__pycache__/', 
-            '/build/', '/dist/', '/target/', '/venv/', '/env/', '/.next/', '/.nuxt/', 
-            '/vendor/', '/coverage/', '/bin/', '/obj/', '/out/'
-        ];
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat ok" id="statFiles"><strong id="statFileCount">0</strong> files</div>
+        <div class="stat-sep"></div>
+        <div class="stat" id="statSize"><strong id="statSizeVal">0 KB</strong> total</div>
+        <div class="stat-sep"></div>
+        <div class="stat warn" id="statSkipped" style="display:none"><strong id="statSkipCount">0</strong> skipped</div>
+        <div style="flex:1"></div>
+        <div class="stat" id="statusText" style="color: var(--muted); font-size:11px;">Waiting for files…</div>
+    </div>
 
-        // 3. Exact files to completely ignore (Usually massive junk files)
-        const ignoredFiles = [
-            'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'composer.lock', 'Gemfile.lock'
-        ];
+    <!-- Progress -->
+    <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label">Reading <span id="progressLabel">…</span></div>
+    </div>
 
-        // 4. Max File Size: 500 KB (500 * 1024 bytes). Prevents massive data dumps.
-        const MAX_FILE_SIZE = 512000; 
+    <!-- Output -->
+    <div class="output-header">
+        <span class="output-title">Output</span>
+        <div class="action-row">
+            <button class="action-btn copy" id="copyBtn">📋 Clean Copy</button>
+            <button class="action-btn download" id="downloadBtn">💾 Download .txt</button>
+        </div>
+    </div>
 
-        const folderInput = document.getElementById('folderInput');
-        const outputText = document.getElementById('outputText');
-        const copyBtn = document.getElementById('copyBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const statusText = document.getElementById('statusText');
-        const skippedLog = document.getElementById('skippedLog');
+    <textarea id="outputText" placeholder="Aggregated source code will appear here…" readonly></textarea>
+    <div class="skipped-log" id="skippedLog"></div>
+</div>
 
-        let currentFolderName = "aggregated_code";
+<!-- Extension Dialog -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Files matching <code id="modalExt">.py</code></div>
+            <button class="modal-close" id="modalClose">✕</button>
+        </div>
+        <div class="modal-desc" id="modalDesc">Click a file to preview, or load all files of this type.</div>
+        <ul class="modal-file-list" id="modalFileList"></ul>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+            <button class="modal-btn confirm" id="modalLoad">Load These Files</button>
+        </div>
+    </div>
+</div>
 
-        function readFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = (e) => reject(e);
-                reader.readAsText(file);
-            });
+<script>
+    const allowedExtensions = [
+        '.html', '.css', '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte',
+        '.java', '.py', '.pyw', '.pyi', '.pyx', '.ipynb', '.c', '.cpp', '.h',
+        '.cs', '.go', '.rs', '.rb', '.php', '.xml', '.json', '.yaml', '.yml',
+        '.md', '.sql', '.sh', '.toml', '.txt', '.ini', '.cfg'
+    ];
+
+    const ignoredFolders = [
+        '/node_modules/', '/.git/', '/.idea/', '/.vscode/', '/__pycache__/',
+        '/.pytest_cache/', '/.mypy_cache/', '/.tox/', '/build/', '/dist/',
+        '/target/', '/venv/', '/.venv/', '/env/', '/.next/', '/.nuxt/',
+        '/vendor/', '/coverage/', '/bin/', '/obj/', '/out/'
+    ];
+
+    const ignoredFiles = [
+        'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+        'composer.lock', 'Gemfile.lock', 'poetry.lock'
+    ];
+
+    const MAX_FILE_SIZE = 512000;
+
+    // State
+    let allFiles = [];          // all accepted File objects
+    let filteredFiles = [];     // currently displayed files (by ext filter)
+    let activeExt = 'all';
+    let currentFolderName = 'aggregated_code';
+    let modalPendingFiles = []; // files for current dialog
+
+    // DOM refs
+    const folderInput = document.getElementById('folderInput');
+    const fileInput = document.getElementById('fileInput');
+    const outputText = document.getElementById('outputText');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const statusText = document.getElementById('statusText');
+    const skippedLog = document.getElementById('skippedLog');
+    const chipContainer = document.getElementById('chipContainer');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const progressLabel = document.getElementById('progressLabel');
+    const statFileCount = document.getElementById('statFileCount');
+    const statSizeVal = document.getElementById('statSizeVal');
+    const statSkipped = document.getElementById('statSkipped');
+    const statSkipCount = document.getElementById('statSkipCount');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalExt = document.getElementById('modalExt');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalFileList = document.getElementById('modalFileList');
+    const modalClose = document.getElementById('modalClose');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalLoad = document.getElementById('modalLoad');
+
+    // ── Utilities ──────────────────────────────────────────────
+
+    function readFile(file) {
+        return new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = e => res(e.target.result);
+            r.onerror = e => rej(e);
+            r.readAsText(file);
+        });
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    function getExt(path) {
+        const dot = path.lastIndexOf('.');
+        return dot !== -1 ? path.substring(dot).toLowerCase() : '';
+    }
+
+    /**
+     * Clean copy: strips blank lines, single-line comments, and trims each line.
+     * Keeps structure but removes noise.
+     */
+    function cleanContent(code, ext) {
+        const lines = code.split('\n');
+        const cleaned = [];
+        for (let raw of lines) {
+            const line = raw.trimEnd();
+            if (!line.trim()) continue;                         // skip blank lines
+            // Skip pure comment lines (// # -- /* */ style)
+            const t = line.trim();
+            if (/^\/\//.test(t)) continue;
+            if (/^#/.test(t) && ext !== '.sh' && ext !== '.cfg' && ext !== '.ini') continue;
+            if (/^--/.test(t)) continue;
+            if (/^\/\*/.test(t) || /^\*/.test(t) || /^\*\//.test(t)) continue;
+            if (t === '') continue;
+            cleaned.push(line);
+        }
+        return cleaned.join('\n');
+    }
+
+    function downloadAsTxt(text, filename) {
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // ── File Ingestion ─────────────────────────────────────────
+
+    async function ingestFiles(files, isFolder) {
+        if (!files.length) return;
+
+        if (isFolder && files[0].webkitRelativePath) {
+            currentFolderName = files[0].webkitRelativePath.split('/')[0];
+        } else {
+            currentFolderName = 'aggregated_files';
         }
 
-        function downloadAsTxt(text, filename) {
-            if (!text) return;
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+        allFiles = [];
+        const skipped = [];
+
+        for (const file of files) {
+            const path = file.webkitRelativePath || file.name;
+            const ext = getExt(path);
+            const isIgnoredFolder = isFolder && ignoredFolders.some(f => path.includes(f));
+            if (isIgnoredFolder) continue;
+            if (!allowedExtensions.includes(ext)) continue;
+            if (ignoredFiles.includes(file.name)) { skipped.push(`${path} [lockfile]`); continue; }
+            if (file.name.endsWith('.min.js') || file.name.endsWith('.min.css')) { skipped.push(`${path} [minified]`); continue; }
+            if (file.size > MAX_FILE_SIZE) { skipped.push(`${path} [>${formatSize(file.size)}]`); continue; }
+            allFiles.push(file);
         }
 
-        folderInput.addEventListener('change', async (e) => {
-            const files = e.target.files;
-            if (files.length === 0) return;
+        // Update skipped notice
+        if (skipped.length) {
+            statSkipped.style.display = 'flex';
+            statSkipCount.textContent = skipped.length;
+            skippedLog.innerHTML = `<strong>Skipped ${skipped.length}:</strong> ` + skipped.join(' · ');
+        } else {
+            statSkipped.style.display = 'none';
+            skippedLog.innerHTML = '';
+        }
 
-            if (files[0].webkitRelativePath) {
-                currentFolderName = files[0].webkitRelativePath.split('/')[0];
-            }
+        buildChips();
+        activeExt = 'all';
+        filteredFiles = [...allFiles];
+        await renderOutput(filteredFiles);
+    }
 
-            statusText.textContent = 'Processing files...';
+    // ── Chips ──────────────────────────────────────────────────
+
+    function buildChips() {
+        // Gather unique extensions
+        const extMap = {};
+        for (const f of allFiles) {
+            const ext = getExt(f.webkitRelativePath || f.name);
+            extMap[ext] = (extMap[ext] || 0) + 1;
+        }
+
+        chipContainer.innerHTML = `<span class="chip chip-all active" data-ext="all"><span class="dot"></span> All (${allFiles.length})</span>`;
+
+        // Sort by count desc
+        const sorted = Object.entries(extMap).sort((a, b) => b[1] - a[1]);
+        for (const [ext, count] of sorted) {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.dataset.ext = ext;
+            chip.innerHTML = `<span class="dot"></span>${ext} <span style="color:var(--border);margin-left:3px">${count}</span>`;
+            chipContainer.appendChild(chip);
+        }
+
+        chipContainer.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => onChipClick(chip));
+        });
+    }
+
+    function onChipClick(chip) {
+        const ext = chip.dataset.ext;
+        if (ext === 'all') {
+            setActiveChip('all');
+            filteredFiles = [...allFiles];
+            renderOutput(filteredFiles);
+        } else {
+            // Open dialog for this extension
+            openModal(ext);
+        }
+    }
+
+    function setActiveChip(ext) {
+        activeExt = ext;
+        chipContainer.querySelectorAll('.chip').forEach(c => {
+            c.classList.toggle('active', c.dataset.ext === ext);
+        });
+    }
+
+    // ── Modal / Dialog ─────────────────────────────────────────
+
+    function openModal(ext) {
+        const files = allFiles.filter(f => getExt(f.webkitRelativePath || f.name) === ext);
+        modalPendingFiles = files;
+        modalExt.textContent = ext;
+        modalDesc.textContent = `${files.length} file${files.length !== 1 ? 's' : ''} found. Click a file to preview it, or load all.`;
+
+        modalFileList.innerHTML = '';
+        for (const f of files) {
+            const path = f.webkitRelativePath || f.name;
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="file-icon">📄</span><span class="file-name" title="${path}">${path}</span><span class="file-size">${formatSize(f.size)}</span>`;
+            li.addEventListener('click', () => previewFile(f, li));
+            modalFileList.appendChild(li);
+        }
+
+        modalOverlay.classList.add('open');
+    }
+
+    async function previewFile(file, li) {
+        try {
+            const content = await readFile(file);
+            outputText.value = content;
+            modalOverlay.classList.remove('open');
+            statusText.textContent = `Previewing: ${file.name}`;
+        } catch (e) { console.error(e); }
+    }
+
+    modalClose.addEventListener('click', () => modalOverlay.classList.remove('open'));
+    modalCancel.addEventListener('click', () => modalOverlay.classList.remove('open'));
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
+
+    modalLoad.addEventListener('click', () => {
+        const ext = modalExt.textContent;
+        setActiveChip(ext);
+        filteredFiles = [...modalPendingFiles];
+        modalOverlay.classList.remove('open');
+        renderOutput(filteredFiles);
+    });
+
+    // ── Render Output (streaming line-by-line) ─────────────────
+
+    async function renderOutput(files) {
+        if (!files.length) {
             outputText.value = '';
-            skippedLog.innerHTML = ''; // Clear skipped files log
-            
-            let aggregatedCode = '';
-            let fileCount = 0;
-            let skippedFiles = [];
+            statusText.textContent = 'No files to display.';
+            statFileCount.textContent = '0';
+            statSizeVal.textContent = '0 KB';
+            return;
+        }
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const path = file.webkitRelativePath || file.name;
-                const fileName = file.name;
-                const ext = path.substring(path.lastIndexOf('.')).toLowerCase();
+        outputText.value = '';
+        progressWrap.classList.add('visible');
+        progressFill.style.width = '0%';
+        statusText.textContent = 'Reading files…';
 
-                // Filters
-                const isIgnoredFolder = ignoredFolders.some(folder => path.includes(folder));
-                const isIgnoredFile = ignoredFiles.includes(fileName);
-                const isMinified = fileName.endsWith('.min.js') || fileName.endsWith('.min.css');
-                const isTooBig = file.size > MAX_FILE_SIZE;
-                const isAllowedExt = allowedExtensions.includes(ext);
+        let total = '';
+        let totalBytes = 0;
 
-                if (!isIgnoredFolder && isAllowedExt) {
-                    if (isIgnoredFile || isMinified || isTooBig) {
-                        let reason = isTooBig ? `Over 500KB (${Math.round(file.size/1024)}KB)` : (isMinified ? 'Minified' : 'Lockfile');
-                        skippedFiles.push(`Skipped: ${path} [${reason}]`);
-                        continue;
-                    }
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const path = file.webkitRelativePath || file.name;
+            const ext = getExt(path);
 
-                    try {
-                        const content = await readFile(file);
-                        
-                        aggregatedCode += `================================================================================\n`;
-                        aggregatedCode += `File: ${path}\n`;
-                        aggregatedCode += `================================================================================\n\n`;
-                        aggregatedCode += `${content}\n\n\n`;
-                        
-                        fileCount++;
-                    } catch (err) {
-                        console.error(`Error reading ${path}:`, err);
+            progressFill.style.width = ((i / files.length) * 100) + '%';
+            progressLabel.innerHTML = `<span>${path}</span>`;
+
+            try {
+                const raw = await readFile(file);
+                // Stream line-by-line with a small async yield every 200 lines
+                const lines = raw.split('\n');
+                let chunk = `================\nFile: ${path}\n================\n`;
+                for (let j = 0; j < lines.length; j++) {
+                    chunk += lines[j] + '\n';
+                    // Yield to browser every 200 lines so UI stays responsive
+                    if (j % 200 === 199) {
+                        total += chunk;
+                        outputText.value = total;
+                        outputText.scrollTop = outputText.scrollHeight;
+                        chunk = '';
+                        await new Promise(r => setTimeout(r, 0));
                     }
                 }
+                total += chunk + '\n';
+                outputText.value = total;
+                outputText.scrollTop = outputText.scrollHeight;
+                totalBytes += new Blob([raw]).size;
+            } catch (e) { console.error(e); }
+        }
+
+        progressFill.style.width = '100%';
+        setTimeout(() => progressWrap.classList.remove('visible'), 600);
+
+        statFileCount.textContent = files.length;
+        statSizeVal.textContent = formatSize(totalBytes);
+        statusText.textContent = `Done — ${files.length} file${files.length !== 1 ? 's' : ''}`;
+    }
+
+    // ── Copy (clean) ───────────────────────────────────────────
+
+    copyBtn.addEventListener('click', async () => {
+        if (!outputText.value.trim()) {
+            alert('Nothing to copy! Please select files first.'); return;
+        }
+
+        // Build clean version: strip blank lines and comments per-file block
+        let cleanOutput = '';
+        const blocks = outputText.value.split(/={2,}\nFile: /);
+        for (const block of blocks) {
+            if (!block.trim()) continue;
+            const nl = block.indexOf('\n');
+            const header = block.substring(0, nl).trim();   // "path/to/file.py"
+            const body = block.substring(nl + 1).replace(/={2,}\n/, '');
+            const ext = getExt(header);
+            const cleaned = cleanContent(body, ext);
+            if (cleaned.trim()) {
+                cleanOutput += `== ${header} ==\n${cleaned}\n\n`;
             }
+        }
 
-            outputText.value = aggregatedCode;
-            
-            // Calculate size of final string in MB
-            const finalSizeMB = (new Blob([aggregatedCode]).size / (1024 * 1024)).toFixed(2);
-            
-            statusText.textContent = `Aggregated ${fileCount} files (~${finalSizeMB} MB).`;
+        try {
+            await navigator.clipboard.writeText(cleanOutput);
+            const orig = copyBtn.innerHTML;
+            copyBtn.innerHTML = '✅ Copied!';
+            setTimeout(() => { copyBtn.innerHTML = orig; }, 2000);
+        } catch {
+            alert('Copy failed. Select all text in the box and press Ctrl+A / Ctrl+C.');
+        }
+    });
 
-            if (skippedFiles.length > 0) {
-                skippedLog.innerHTML = `<strong>Skipped ${skippedFiles.length} files:</strong><br>` + skippedFiles.join('<br>');
-            }
+    // ── Download (no auto-download) ────────────────────────────
 
-            if (fileCount > 0) {
-                downloadAsTxt(aggregatedCode, `${currentFolderName}_code.txt`);
-            } else {
-                statusText.textContent = `No supported files found in the selected folder.`;
-            }
-        });
+    downloadBtn.addEventListener('click', () => {
+        if (!outputText.value.trim()) {
+            alert('Nothing to download! Please select files first.'); return;
+        }
+        downloadAsTxt(outputText.value, `${currentFolderName}_code.txt`);
+    });
 
-        copyBtn.addEventListener('click', () => {
-            if (!outputText.value) {
-                alert("Nothing to copy! Please select a folder first.");
-                return;
-            }
+    // ── Input Handlers ─────────────────────────────────────────
 
-            navigator.clipboard.writeText(outputText.value).then(() => {
-                const originalText = copyBtn.innerText;
-                copyBtn.innerText = "✅ Copied!";
-                setTimeout(() => { copyBtn.innerText = originalText; }, 2000);
-            }).catch(err => {
-                alert("Failed to copy text. You can manually click inside the text box and press Ctrl+A / Ctrl+C.");
-            });
-        });
+    folderInput.addEventListener('change', async e => {
+        await ingestFiles(Array.from(e.target.files), true);
+        folderInput.value = '';
+    });
 
-        downloadBtn.addEventListener('click', () => {
-            if (!outputText.value) {
-                alert("Nothing to download! Please select a folder first.");
-                return;
-            }
-            downloadAsTxt(outputText.value, `${currentFolderName}_code.txt`);
-        });
-    </script>
-
+    fileInput.addEventListener('change', async e => {
+        await ingestFiles(Array.from(e.target.files), false);
+        fileInput.value = '';
+    });
+</script>
 </body>
 </html>
