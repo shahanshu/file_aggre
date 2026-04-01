@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Aggregator</title>
+    <title>Code wRapper</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -494,7 +494,7 @@
     const MAX_FILE_SIZE = 512000;
 
     let allFiles = [], filteredFiles = [], activeExt = 'all';
-    let currentFolderName = 'aggregated_code', modalPendingFiles = [];
+    let currentFolderName = 'wrapped_code_file', modalPendingFiles = [];
 
     const $ = id => document.getElementById(id);
     const folderInput   = $('folderInput');
@@ -553,7 +553,7 @@
         if (!files.length) return;
         currentFolderName = isFolder && files[0].webkitRelativePath
             ? files[0].webkitRelativePath.split('/')[0]
-            : 'aggregated_files';
+            : 'wrapped_code_file';
 
         showLoader(true);
         filterSection.style.display = 'none';
